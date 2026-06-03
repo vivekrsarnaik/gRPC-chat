@@ -56,10 +56,22 @@ func main() {
 				log.Fatal(err)
 			}
 
-			fmt.Printf("\n%s: %s\n",
-				msg.Username,
-				msg.Content,
-			)
+			if msg.History {
+
+				fmt.Printf(
+					"\n[History] %s: %s\n",
+					msg.Username,
+					msg.Content,
+				)
+
+			} else {
+
+				fmt.Printf(
+					"\n%s: %s\n",
+					msg.Username,
+					msg.Content,
+				)
+			}
 		}
 	}()
 

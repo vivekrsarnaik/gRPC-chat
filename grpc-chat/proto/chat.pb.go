@@ -25,6 +25,7 @@ type ChatMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	History       bool                   `protobuf:"varint,3,opt,name=history,proto3" json:"history,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -73,14 +74,22 @@ func (x *ChatMessage) GetContent() string {
 	return ""
 }
 
+func (x *ChatMessage) GetHistory() bool {
+	if x != nil {
+		return x.History
+	}
+	return false
+}
+
 var File_proto_chat_proto protoreflect.FileDescriptor
 
 const file_proto_chat_proto_rawDesc = "" +
 	"\n" +
-	"\x10proto/chat.proto\x12\x04chat\"C\n" +
+	"\x10proto/chat.proto\x12\x04chat\"]\n" +
 	"\vChatMessage\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\tR\acontent2?\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\x12\x18\n" +
+	"\ahistory\x18\x03 \x01(\bR\ahistory2?\n" +
 	"\vChatService\x120\n" +
 	"\x04Chat\x12\x11.chat.ChatMessage\x1a\x11.chat.ChatMessage(\x010\x01B\x11Z\x0fgrpc-chat/protob\x06proto3"
 
