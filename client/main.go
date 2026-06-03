@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	pb "grpc-chat/grpc-chat/proto"
 
@@ -16,38 +16,66 @@ import (
 )
 
 func main() {
+
 	conn, err := grpc.NewClient(
 		"localhost:50051",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
+
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	defer conn.Close()
 
 	client := pb.NewChatServiceClient(conn)
 
-	reader := bufio.NewReader(os.Stdin)
-
-	fmt.Print("Enter username: ")
-	username, _ := reader.ReadString('\n')
-	username = strings.TrimSpace(username)
-
-	fmt.Print("Enter message: ")
-	content, _ := reader.ReadString('\n')
-	content = strings.TrimSpace(content)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
-	_, err = client.SendMessage(ctx, &pb.ChatMessage{
-		Username: username,
-		Content:  content,
-	})
+	stream, err := client.Chat(context.Background())
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Message sent!")
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Print("Username: ")
+	username, _ := reader.ReadString('\n')
+	username = strings.TrimSpace(username)
+
+	go func() {
+
+		for {
+
+			msg, err := stream.Recv()
+
+			if err == io.EOF {
+				return
+			}
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			fmt.Printf("\n%s: %s\n",
+				msg.Username,
+				msg.Content,
+			)
+		}
+	}()
+
+	for {
+
+		text, _ := reader.ReadString('\n')
+
+		text = strings.TrimSpace(text)
+
+		err := stream.Send(&pb.ChatMessage{
+			Username: username,
+			Content:  text,
+		})
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }

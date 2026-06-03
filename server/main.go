@@ -1,11 +1,10 @@
 package main
 
 import (
-	"context"
-	"fmt"
+	"io"
 	"log"
 	"net"
-	"time"
+	"sync"
 
 	pb "grpc-chat/grpc-chat/proto"
 
@@ -14,24 +13,46 @@ import (
 
 type server struct {
 	pb.UnimplementedChatServiceServer
+
+	mu      sync.Mutex
+	clients map[pb.ChatService_ChatServer]bool
 }
 
-func (s *server) SendMessage(
-	ctx context.Context,
-	msg *pb.ChatMessage,
-) (*pb.Empty, error) {
+func (s *server) Chat(stream pb.ChatService_ChatServer) error {
 
-	fmt.Printf(
-		"[%s] %s: %s\n",
-		time.Now().Format("15:04:05"),
-		msg.Username,
-		msg.Content,
-	)
+	s.mu.Lock()
+	s.clients[stream] = true
+	s.mu.Unlock()
 
-	return &pb.Empty{}, nil
+	defer func() {
+		s.mu.Lock()
+		delete(s.clients, stream)
+		s.mu.Unlock()
+	}()
+
+	for {
+		msg, err := stream.Recv()
+
+		if err == io.EOF {
+			return nil
+		}
+
+		if err != nil {
+			return err
+		}
+
+		s.mu.Lock()
+
+		for client := range s.clients {
+			client.Send(msg)
+		}
+
+		s.mu.Unlock()
+	}
 }
 
 func main() {
+
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatal(err)
@@ -39,9 +60,14 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
-	pb.RegisterChatServiceServer(grpcServer, &server{})
+	pb.RegisterChatServiceServer(
+		grpcServer,
+		&server{
+			clients: make(map[pb.ChatService_ChatServer]bool),
+		},
+	)
 
-	fmt.Println("Server running on port 50051...")
+	log.Println("Chat server running on :50051")
 
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatal(err)
